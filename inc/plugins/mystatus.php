@@ -769,18 +769,21 @@ function mystatus_process()
         }
 
 		// Check flood time
-		$seconds = (int)$mybb->settings['mystatus_flood_check'];
-		$seconds = TIME_NOW-$seconds;
-
-		$mybb->user['uid'] = (int)$mybb->user['uid'];
-		$query = $db->simple_select('statuses', 'sid,dateline', "dateline>='{$seconds}' AND uid='{$mybb->user['uid']}'", array('limit' => 1, 'order_by' => 'dateline', 'oder_dir' => 'desc'));
-		$floodstatus = $db->fetch_array($query);
-
-		if($floodstatus['sid'])
+		if(!empty($mybb->settings['mystatus_flood_check']))
 		{
-			$seconds = $floodstatus['dateline']-$seconds;
-			$message = $lang->sprintf($lang->mystatus_error_status_flood, my_number_format($seconds));
-			mystatus_error($message, $mybb->input['ajax']);
+			$seconds = (int)$mybb->settings['mystatus_flood_check'];
+			$seconds = TIME_NOW-$seconds;
+
+			$mybb->user['uid'] = (int)$mybb->user['uid'];
+			$query = $db->simple_select('statuses', 'sid,dateline', "dateline>='{$seconds}' AND uid='{$mybb->user['uid']}'", array('limit' => 1, 'order_by' => 'dateline', 'oder_dir' => 'desc'));
+			$floodstatus = $db->fetch_array($query);
+
+			if($floodstatus['sid'])
+			{
+				$seconds = $floodstatus['dateline']-$seconds;
+				$message = $lang->sprintf($lang->mystatus_error_status_flood, my_number_format($seconds));
+				mystatus_error($message, $mybb->input['ajax']);
+			}
 		}
 
         $insertArray    =   array(
