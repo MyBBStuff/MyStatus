@@ -93,6 +93,46 @@ class Status
 	}
 
 	/**
+	 * Get the "likes" for a specific status or set of statuses.
+	 *
+	 * @param int/array The status(es) to get the likes for.
+	 * @return array/boolean An array of all the "likes" or false if nil
+	 */
+	public function getStatusLikes($id)
+	{
+		$likes = [];
+		if (!is_array($id)) {
+			$id = (int) $id;
+
+			$query = $this->db->simple_select('status_likes', '*', 'status_id = '.$id);
+
+			if ($this->db->num_rows($query) == 0) {
+				return false;
+			}
+
+			while ($like = $this->db->fetch_array($query)) {
+				$likes[] = $like;
+			}
+		} else {
+			$id = array_filter($id);
+			$id = array_map('intval', $id);
+			$inClause = "'".implode("','", $id)."'";
+
+			$query = $this->db->simple_select('status_likes', '*', "status_id IN ({$inClause})");
+
+			if ($this->db->num_rows($query) == 0) {
+				return false;
+			}
+
+			while ($like = $this->db->fetch_array($query)) {
+				$likes[(int) $like['status_id']][] = $like;
+			}
+		}
+
+		return $likes;
+	}
+
+	/**
 	 * Delete a single status by it's ID.
 	 *
 	 * @param int/array Either the ID of a single status to delete or an array of status IDs to delete.
