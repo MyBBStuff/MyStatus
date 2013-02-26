@@ -1,7 +1,7 @@
-MyAlerts: Alerts System for MyBB
+MyStatus
 ==========================
 
-MyAlerts is a plugin for MyBB that allows your users to post simple status updates similar to how Twitter works. It also allows those status posts to be pushed to the users' twitter accounts that are linked via the User CP.
+MyStatus is a plugin for MyBB that allows your users to post simple status updates similar to how Twitter works. It also allows those status posts to be pushed to the users' twitter accounts that are linked via the User CP.
 
 Features:
 -----------
