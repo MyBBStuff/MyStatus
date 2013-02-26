@@ -30,10 +30,10 @@ class Status
 	private $parser;
 
 	/**
-	 * Create a new Status object
+	 * Create a new Status object.
 	 *
 	 * @param MyBB The MyBB object.
-	 * @param DB_* A Database instance object of type DB_MySQL, DB_MySQLi, DB_PgSQL or DB_SQLite
+	 * @param DB_* A Database instance object of type DB_MySQL, DB_MySQLi, DB_PgSQL or DB_SQLite.
 	 * @return null
 	 */
 	public function __construct(MyBB $mybbIn, $dbIn, postParser $parserIn)
@@ -62,6 +62,23 @@ class Status
 		}
 
 		return $this->parser->parse_message($message, ['allow_html' => false, 'filter_badwords' => true, 'allow_mycode' => true, 'allow_smilies' => true, 'nl2br' => true, 'me_username' => $this->mybb->user['username']]);
+	}
+
+	/**
+	 * Add a "like" for a specific status.
+	 *
+	 * @param int The status id to "like".
+	 * @return int The insert id if available.
+	 */
+	public function addStatusLike($id)
+	{
+		$insertArray = [
+			'status_id'  => $id,
+			'user_id'    => (int) $this->mybb->user['uid'],
+			'created_at' => new DateTime,
+		];
+
+		return $this->db->insert_query('status_likes', $insertArray);
 	}
 
 	/**
@@ -96,7 +113,7 @@ class Status
 	 * Get the "likes" for a specific status or set of statuses.
 	 *
 	 * @param int/array The status(es) to get the likes for.
-	 * @return array/boolean An array of all the "likes" or false if nil
+	 * @return array/boolean An array of all the "likes" or false if nil.
 	 */
 	public function getStatusLikes($id)
 	{
@@ -136,7 +153,7 @@ class Status
 	 * Delete a single status by it's ID.
 	 *
 	 * @param int/array Either the ID of a single status to delete or an array of status IDs to delete.
-	 * @return boolean Whether the status(es) were deleted.
+	 * @return resource The query data.
 	 */
 	public function deleteStatus($id)
 	{
@@ -151,5 +168,19 @@ class Status
 
 			return $this->db->delete_query('statuses', "id IN ({$inClause})");
 		}
+	}
+
+	/**
+	 * Remove a "like" from a status.
+	 *
+	 * @param int The ID of the status to "unlike".
+	 * @return resource The query data.
+	 */
+	public function deleteStatusLike($id)
+	{
+		$id = (int) $id;
+		$user_id = (int) $this->mybb->user['uid'];
+
+		return $this->db->delete_query('status_likes', 'statud_id = '.$id.' AND user_id = '.$user_id, 1);
 	}
 }
