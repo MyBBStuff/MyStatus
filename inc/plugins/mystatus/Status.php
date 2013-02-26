@@ -63,4 +63,53 @@ class Status
 
 		return $this->parser->parse_message($message, ['allow_html' => false, 'filter_badwords' => true, 'allow_mycode' => true, 'allow_smilies' => true, 'nl2br' => true, 'me_username' => $this->mybb->user['username']]);
 	}
+
+	/**
+	 * Get a single status or an array of statuses by ID.
+	 *
+	 * @param int/array The id of the status to fetch or an array of status IDs to fetch multiple statuses.
+	 * @return array The status's row in the statuses table or an associative array in the format ID => status row.
+	 */
+	public function getStatus($id)
+	{
+		if (!is_array($id)) {
+			$id = (int) $id;
+
+			$status = $this->db->simple_select('statuses', '*', 'id = '.$id, ['limit' => 1]);
+			return $this->db->fetch_array($status);
+		} else {
+			$id = array_filter($id);
+			$id = array_map('intval', $id);
+			$inClause = "'".implode("','", $id)."'";
+
+			$statuses = $this->db->simple_select('statuses', '*', "id IN ({$inClause})");
+			$toReturn = [];
+			while ($row = $this->db->fetch_array($statuses)) {
+				$toReturn[(int) $row['id']] = $row;
+			}
+
+			return $toReturn;
+		}
+	}
+
+	/**
+	 * Delete a single status by it's ID.
+	 *
+	 * @param int/array Either the ID of a single status to delete or an array of status IDs to delete.
+	 * @return boolean Whether the status(es) were deleted.
+	 */
+	public function deleteStatus($id)
+	{
+		if (!is_array($id)) {
+			$id = (int) $id;
+
+			return $this->db->delete_query('statuses', 'id = '.$id, 1);
+		} else {
+			$id = array_filter($id);
+			$id = array_map('intval', $id);
+			$inClause = "'".implode("','", $id)."'";
+
+			return $this->db->delete_query('statuses', "id IN ({$inClause})");
+		}
+	}
 }
