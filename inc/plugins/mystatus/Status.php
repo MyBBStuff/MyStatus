@@ -1,7 +1,4 @@
 <?php
-
-namespace Euantor\MyStatus;
-
 /**
  * Status class.
  *
@@ -16,31 +13,41 @@ class Status
 {
 	/**
 	 * Our Database connection object.
+	 *
+	 * @access private
+	 * @var mixed
 	 */
-	private $db   = null;
+	private $db;
 
 	/**
 	 * Our MyBB object.
+	 *
+	 * @access private
+	 * @var MyBB
 	 */
-	private $mybb = null;
+	private $mybb;
 
 	/**
 	 * MyCode parser object.
+	 *
+	 * @access private
+	 * @var postParser
 	 */
 	private $parser;
 
 	/**
 	 * Create a new Status object.
 	 *
-	 * @param MyBB The MyBB object.
-	 * @param DB_* A Database instance object of type DB_MySQL, DB_MySQLi, DB_PgSQL or DB_SQLite.
+	 * @param MyBB $mybbIn The MyBB object.
+	 * @param DB_* $dbIn A Database instance object of type DB_MySQL, DB_MySQLi, DB_PgSQL or DB_SQLite.
+	 * @param postParser $parserIn An instance of the MyBB post parser to handle MyCode, Smilies etc.
 	 * @return null
 	 */
 	public function __construct(MyBB $mybbIn, $dbIn, postParser $parserIn)
 	{
 		$this->mybb = $mybbIn;
 
-		if ($dbIn instanceof DB_MySQL OR $dbIn instanceof DB_MySQLi OR $dbIN instanceof DB_PgSQL OR $dbIn instanceof DB_SQLite) {
+		if ($dbIn instanceof DB_MySQL OR $dbIn instanceof DB_MySQLi OR $dbIn instanceof DB_PgSQL OR $dbIn instanceof DB_SQLite) {
 			$this->db = $dbIn;
 		}
 
@@ -92,14 +99,16 @@ class Status
 		if (!is_array($id)) {
 			$id = (int) $id;
 
-			$status = $this->db->simple_select('statuses', '*', 'id = '.$id, ['limit' => 1]);
+			$queryString = "SELECT s.*, u.avatar, u.username, u.usergroup, u.displaygroup FROM %sstatuses s LEFT JOIN %susers u ON (s.user_id = u.uid) WHERE s.id = {$id} LIMIT 1";
+			$status = $this->db->write_query(sprintf($queryString, TABLE_PREFIX, TABLE_PREFIX));
 			return $this->db->fetch_array($status);
 		} else {
-			$id = array_filter($id);
-			$id = array_map('intval', $id);
+			$id = array_map('intval', array_filter($id));
 			$inClause = "'".implode("','", $id)."'";
 
-			$statuses = $this->db->simple_select('statuses', '*', "id IN ({$inClause})");
+			$queryString = "SELECT s.*, u.avatar, u.username, u.usergroup, u.displaygroup FROM %sstatuses s LEFT JOIN %susers u ON (s.user_id = u.uid) WHERE s.id IN ({$inClause})";
+
+			$statuses = $this->db->write_query(sprintf($queryString, TABLE_PREFIX, TABLE_PREFIX));
 			$toReturn = [];
 			while ($row = $this->db->fetch_array($statuses)) {
 				$toReturn[(int) $row['id']] = $row;
@@ -121,7 +130,8 @@ class Status
 		if (!is_array($id)) {
 			$id = (int) $id;
 
-			$query = $this->db->simple_select('status_likes', '*', 'status_id = '.$id);
+			$queryString = "SELECT s.*, u.avatar, u.username, u.usergroup, u.displaygroup FROM %sstatus_likes s LEFT JOIN %susers u ON (s.user_id = u.uid) WHERE s.status_id = {$id}";
+			$query = $this->db->write_query(sprintf($queryString, TABLE_PREFIX, TABLE_PREFIX));
 
 			if ($this->db->num_rows($query) == 0) {
 				return false;
@@ -131,11 +141,11 @@ class Status
 				$likes[] = $like;
 			}
 		} else {
-			$id = array_filter($id);
-			$id = array_map('intval', $id);
+			$id = array_map('intval',  array_filter($id));
 			$inClause = "'".implode("','", $id)."'";
 
-			$query = $this->db->simple_select('status_likes', '*', "status_id IN ({$inClause})");
+			$queryString = "SELECT s.*, u.avatar, u.username, u.usergroup, u.displaygroup FROM %sstatus_likes s LEFT JOIN %susers u ON (s.user_id = u.uid) WHERE s.status_id IN ({$inClause})";
+			$query = $this->db->write_query(sprintf($queryString, TABLE_PREFIX, TABLE_PREFIX));
 
 			if ($this->db->num_rows($query) == 0) {
 				return false;
@@ -162,8 +172,7 @@ class Status
 
 			return $this->db->delete_query('statuses', 'id = '.$id, 1);
 		} else {
-			$id = array_filter($id);
-			$id = array_map('intval', $id);
+			$id = array_map('intval', array_filter($id));
 			$inClause = "'".implode("','", $id)."'";
 
 			return $this->db->delete_query('statuses', "id IN ({$inClause})");
@@ -181,6 +190,6 @@ class Status
 		$id = (int) $id;
 		$user_id = (int) $this->mybb->user['uid'];
 
-		return $this->db->delete_query('status_likes', 'statud_id = '.$id.' AND user_id = '.$user_id, 1);
+		return $this->db->delete_query('status_likes', 'status_id = '.$id.' AND user_id = '.$user_id, 1);
 	}
 }
