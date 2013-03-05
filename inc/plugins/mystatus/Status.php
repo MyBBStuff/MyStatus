@@ -64,7 +64,7 @@ class Status
 	{
 		$message = (string) $message;
 
-		if ($this->myb->user['uid'] > 0) {
+		if ($this->mybb->user['uid'] > 0) {
 			$this->db->insert_query('statuses', ['status' => $this->db->escape_string($message), 'user_id' => (int) $this->mybb->user['uid'], 'created_at' => new DateTime(), 'updated_at' => new DateTime()]);
 		}
 
