@@ -42,6 +42,7 @@ function mystatus_info()
 function mystatus_install()
 {
     global $db, $cache;
+	mystatus_pluginlibray_check();
 
     $plugin_info = mystatus_info();
     $euantor_plugins = $cache->read('euantor_plugins');
@@ -102,13 +103,7 @@ function mystatus_is_installed()
 function mystatus_uninstall()
 {
     global $db, $cache, $PL;
-
-    if (!file_exists(PLUGINLIBRARY)) {
-        flash_message('The selected plugin could not be uninstalled because <a href=\"http://mods.mybb.com/view/pluginlibrary\">PluginLibrary</a> is missing.', 'error');
-        admin_redirect('index.php?module=config-plugins');
-    }
-
-    $PL or require_once PLUGINLIBRARY;
+	mystatus_pluginlibray_check();
 
     if ($db->table_exists('statuses')) {
         $db->drop_table('statuses');
@@ -148,18 +143,7 @@ function mystatus_uninstall()
 function mystatus_activate()
 {
     global $db, $lang, $PL;
-
-    if (!file_exists(PLUGINLIBRARY)) {
-        flash_message($lang->myalerts_pluginlibrary_missing, "error");
-        admin_redirect("index.php?module=config-plugins");
-    }
-
-    $PL or require_once PLUGINLIBRARY;
-
-    if ((int) $PL->version < 9) {
-        flash_message('This plugin requires PluginLibrary 9 or newer', 'error');
-        admin_redirect('index.php?module=config-plugins');
-    }
+	mystatus_pluginlibray_check();
 
     if (!isset($lang->mystatus)) {
         $lang->load('mystatus');
@@ -198,6 +182,12 @@ function mystatus_activate()
                 'title'       => $lang->mystatus_setting_postbit,
                 'description' => $lang->mystatus_setting_postbit_desc,
                 'value'       => '1',
+                ),
+            'flood_check' => array(
+                'title'       => $lang->mystatus_setting_flood_check,
+                'description' => $lang->mystatus_setting_flood_check_desc,
+                'value'       => '60',
+                'optionscode' => 'text',
                 ),
             'post_to_twitter' => array(
                 'title'       => $lang->mystatus_setting_post_to_twitter,
@@ -238,7 +228,7 @@ function mystatus_activate()
 </table>
 <br />',
 
-            'mystatus_update_form'          =>  '<tr>
+            'update_form'          =>  '<tr>
     <td class="{$altbg}" colspan="2">
         <form action="misc.php?action=mystatus_update" method="post" id="mystatusUpdater">
             <div style="padding: {$theme[\'tablespace\']}px">
@@ -249,7 +239,7 @@ function mystatus_activate()
     </td>
 </tr>',
 
-            'mystatus_latest_statuses_row'  =>  '<tr>
+            'latest_statuses_row'  =>  '<tr>
     <td class="{$altbg}" rowspan="2" align="center" width="36">
         <img src="{$status[\'avatar\']}" alt="Avatar of {$status[\'username\']}" width="32" height="32" />
     </td>
@@ -268,21 +258,21 @@ function mystatus_activate()
     </td>
 </tr>',
 
-            'mystatus_latest_statuses_row_no_statuses'  =>  '<tr>
+            'latest_statuses_row_no_statuses'  =>  '<tr>
     <td class="trow1" align="center" id="mystatus_no_statuses_to_show">
         {$lang->mystatus_no_statuses}
     </td>
 </tr>',
 
-            'mystatus_button_delete'        =>  '<a href="misc.php?action=mystatus_delete&amp;sid={$status[\'sid\']}&amp;my_post_key={$mybb->post_code}" id="mystatus_delete_{$status[\'sid\']}">{$lang->mystatus_button_delete}</a>',
+            'button_delete'        =>  '<a href="misc.php?action=mystatus_delete&amp;sid={$status[\'sid\']}&amp;my_post_key={$mybb->post_code}" id="mystatus_delete_{$status[\'sid\']}">{$lang->mystatus_button_delete}</a>',
 
-            'mystatus_usercp_nav_oauth'     =>  '<tr>
+            'usercp_nav_oauth'     =>  '<tr>
     <td class="trow1 smalltext">
         <a href="usercp.php?action=mystatus-oauth" class="usercp_nav_item usercp_nav_options">{$lang->mystatus_usercp_nav_oauth}</a>
     </td>
 </tr>',
 
-            'mystatus_usercp_oauth'         =>  '<html>
+            'usercp_oauth'         =>  '<html>
     <head>
         <title>{$mybb->settings[\'bbname\']} - {$lang->mystatus_usercp_oauth_title}</title>
         {$headerinclude}
@@ -315,11 +305,11 @@ function mystatus_activate()
     </body>
 </html>',
 
-            'mystatus_usercp_oauth_button'  =>  '<a href="usercp.php?action=mystatus-oauth-redirect"><img src="./images/mystatus/twitter.png" alt="{$lang->mystatus_twitter_link_button}" title="{$lang->mystatus_twitter_link_button}" /></a>',
+            'usercp_oauth_button'  =>  '<a href="usercp.php?action=mystatus-oauth-redirect"><img src="./images/mystatus/twitter.png" alt="{$lang->mystatus_twitter_link_button}" title="{$lang->mystatus_twitter_link_button}" /></a>',
 
-            'mystatus_usercp_oauth_button_deactivate'   =>  '<a href="usercp.php?action=mystatus-oauth-disable"><img src="./images/mystatus/twitter-disconnect.png" alt="{$lang->mystatus_twitter_link_button_disconnect}" title="{$lang->mystatus_twitter_link_button_disconnect}" /></a>',
+            'usercp_oauth_button_deactivate'   =>  '<a href="usercp.php?action=mystatus-oauth-disable"><img src="./images/mystatus/twitter-disconnect.png" alt="{$lang->mystatus_twitter_link_button_disconnect}" title="{$lang->mystatus_twitter_link_button_disconnect}" /></a>',
 
-            'mystatus_statuses_page'    =>  '<html>
+            'statuses_page'    =>  '<html>
     <head>
         <title>{$mybb->settings[\'bbname\']} - {$lang->mystatus_latest_statuses_page}</title>
         {$headerinclude}
@@ -357,6 +347,23 @@ function mystatus_deactivate()
     find_replace_templatesets("headerinclude", "#".preg_quote("\n".'{$mystatus_js}')."#i", '');
     find_replace_templatesets("postbit", "#".preg_quote('{$post[\'userStatus\']}'."\n")."#i", '');
     find_replace_templatesets("postbit_classic", "#".preg_quote('{$post[\'userStatus\']}'."\n")."#i", '');
+}
+
+function mystatus_pluginlibray_check()
+{
+	global $PL;
+
+    if (!file_exists(PLUGINLIBRARY)) {
+        flash_message('The selected plugin could not be uninstalled because <a href=\"http://mods.mybb.com/view/pluginlibrary\">PluginLibrary</a> is missing.', 'error');
+        admin_redirect('index.php?module=config-plugins');
+    }
+
+    $PL or require_once PLUGINLIBRARY;
+
+    if ((int) $PL->version < 9) {
+        flash_message('This plugin requires PluginLibrary 9 or newer', 'error');
+        admin_redirect('index.php?module=config-plugins');
+    }
 }
 
 $plugins->add_hook('admin_user_groups_edit_graph_tabs', 'mystatus_usergroup_perms_tab');
@@ -426,13 +433,15 @@ function mystatus_usergroup_perms_save()
 $plugins->add_hook('usercp_menu', 'mystatus_usercp_nav_oauth', 10);
 function mystatus_usercp_nav_oauth()
 {
-    global $mybb, $templates, $lang, $usercpmenu;
-
-    if (!$lang->mystatus) {
-        $lang->load('mystatus');
-    }
+    global $mybb;
 
     if ($mybb->settings['mystatus_post_to_twitter']) {
+		global $templates, $lang, $usercpmenu;
+
+		if (!$lang->mystatus) {
+			$lang->load('mystatus');
+		}
+
         eval("\$usercpmenu .= \"".$templates->get('mystatus_usercp_nav_oauth')."\";");
     }
 }
@@ -442,11 +451,11 @@ function mystatus_usercp_oauth()
 {
     global $mybb, $db, $lang, $templates, $theme, $headerinclude, $header, $footer, $usercpnav, $mystatus_twitter_link_button;
 
-    if (!isset($lang->mystatus)) {
-        $lang->load('mystatus');
-    }
-
     if ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth') {
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
+
         if (!$mybb->user['mystatus_twitter_posting_enabled']) {
             eval("\$mystatus_twitter_link_button = \"".$templates->get('mystatus_usercp_oauth_button')."\";");
         } else {
@@ -456,6 +465,10 @@ function mystatus_usercp_oauth()
         eval("\$page = \"".$templates->get('mystatus_usercp_oauth')."\";");
         output_page($page);
     } elseif ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth-redirect') {
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
+
         session_start();
         require_once MYBB_ROOT.'inc/plugins/mystatus/twitteroauth.php';
         $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret']);
@@ -465,14 +478,18 @@ function mystatus_usercp_oauth()
         $url = $connection->getAuthorizeURL($_SESSION['oauth_token']);
         header('Location: '.$url);
     } elseif ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth-callback') {
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
+
         session_start();
         require_once MYBB_ROOT.'inc/plugins/mystatus/twitteroauth.php';
         $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret'], $_SESSION['oauth_token'], $_SESSION['oauth_token_secret']);
         $access_token = $connection->getAccessToken($mybb->input['oauth_verifier']);
         $updateArray = array(
             'mystatus_twitter_posting_enabled'      => 1,
-            'mystatus_twitter_oauth_token'          => $access_token['oauth_token'],
-            'mystatus_twitter_oauth_token_secret'   => $access_token['oauth_token_secret']
+            'mystatus_twitter_oauth_token'          => $db->escape_string($access_token['oauth_token']),
+            'mystatus_twitter_oauth_token_secret'   => $db->escape_string($access_token['oauth_token_secret'])
         );
         if ($db->update_query('users', $updateArray, 'uid = '.(int) $mybb->user['uid'])) {
             redirect('usercp.php?action=mystatus-oauth', $lang->mystatus_twitter_link_success);
@@ -480,6 +497,10 @@ function mystatus_usercp_oauth()
             error($lang->mystatus_twitter_link_error);
         }
     } elseif ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth-disable') {
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
+
         $updateArray = array(
             'mystatus_twitter_posting_enabled'      =>  0
         );
@@ -495,46 +516,54 @@ function mystatus_usercp_oauth()
 $plugins->add_hook('index_start', 'mystatus_index');
 function mystatus_index()
 {
-    global $mybb, $lang, $db, $templates, $theme, $mystatus_latest_statuses, $mystatus_latest_statuses_row, $altbg, $mystatus_button;
+    global $mybb, $lang, $db, $templates, $theme, $mystatus_latest_statuses, $mystatus_latest_statuses_row, $altbg, $mystatus_button, $parser;
 
     if ((int) $mybb->settings['mystatus_index_num_recent'] != 0) {
         if (!isset($lang->mystatus)) {
             $lang->load('mystatus');
         }
 
-        $query = $db->write_query('SELECT s.*, u.username, u.avatar, u.usergroup, u.displaygroup FROM '.$db->table_prefix.'statuses s INNER JOIN '.$db->table_prefix.'users u ON u.uid = s.uid ORDER BY sid DESC LIMIT 0, '.(int) $mybb->settings['mystatus_index_num_recent']);
-        while ($status = $db->fetch_array($query)) {
-            $altbg = alt_trow();
-            $status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
-            $status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($status['username'], $status['usergroup'], $status['displaygroup']).'</a>';
+		$query = $db->write_query('SELECT s.*, u.username, u.avatar, u.usergroup, u.displaygroup FROM '.$db->table_prefix.'statuses s INNER JOIN '.$db->table_prefix.'users u ON u.uid = s.uid ORDER BY sid DESC LIMIT 0, '.(int) $mybb->settings['mystatus_index_num_recent']);
+        if ($db->num_rows($query)) {
+			if(!is_object($parser))
+			{
+				require_once MYBB_ROOT.'inc/class_parser.php';
+				$parser = new postParser;
+			}
 
-            if (($status['uid'] == $mybb->user['uid'] AND $mybb->usergroup['mystatus_can_delete_own']) OR $mybb->usergroup['mystatus_can_moderate']) {
-                eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
-            } else {
-                $mystatus_button['delete'] = '';
-            }
-            require_once MYBB_ROOT.'inc/class_parser.php';
-            $parser = new postParser;
+			$parserOptions  =   array(
+				'allow_html'        => 0,
+				'allow_smilies'     => 1,
+				'allow_mycode'      => 1,
+				'nl2br'             => 0,
+				'filter_badwords'   => 1,
+				'shorten_urls'      => 1
+				);
 
-            $parserOptions  =   array(
-                'allow_html'        => 0,
-                'allow_smilies'     => 1,
-                'allow_mycode'      => 1,
-                'nl2br'             => 0,
-                'filter_badwords'   => 1,
-                'me_username'       => $status['username'],
-                'shorten_urls'      => 1
-                );
+			while ($status = $db->fetch_array($query)) {
+				$altbg = alt_trow();
+				$status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
+				$status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($status['username'], $status['usergroup'], $status['displaygroup']).'</a>';
 
-            $status['status'] = $parser->parse_message($status['status'], $parserOptions);
-            eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+				if (($status['uid'] == $mybb->user['uid'] AND $mybb->usergroup['mystatus_can_delete_own']) OR $mybb->usergroup['mystatus_can_moderate']) {
+					eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
+				} else {
+					$mystatus_button['delete'] = '';
+				}
+
+				$parserOptions['me_username']  = $status['username'];
+
+				$status['status'] = $parser->parse_message($status['status'], $parserOptions);
+				eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+			}
         }
-
-        if ($db->num_rows($query) == 0) {
+		else
+		{
             eval("\$mystatus_latest_statuses_row = \"".$templates->get('mystatus_latest_statuses_row_no_statuses')."\";");
-        }
+		}
 
         if ($mybb->usergroup['mystatus_can_use']) {
+			$altbg = alt_trow();
             eval("\$mystatus_update_form = \"".$templates->get('mystatus_update_form')."\";");
         }
 
@@ -545,48 +574,56 @@ function mystatus_index()
 $plugins->add_hook('member_profile_end', 'mystatus_profile');
 function mystatus_profile()
 {
-    global $mybb, $db, $lang, $theme, $templates, $cache, $memprofile, $mystatus_button, $mystatus_latest_statuses_row, $mystatus_update_form, $mystatus_latest_statuses;
-
-    if (!isset($lang->mystatus)) {
-        $lang->load('mystatus');
-    }
+    global $mybb, $db, $lang, $theme, $templates, $cache, $memprofile, $mystatus_button, $mystatus_latest_statuses_row, $mystatus_update_form, $mystatus_latest_statuses, $parser;
 
     if ((int) $mybb->settings['mystatus_profile_num_recent'] != 0 AND $umybb->usergroup['mystatus_can_use']) {
-        $query = $db->simple_select('statuses', '*', 'uid = '.(int) $memprofile['uid'], array('order_by' => 'sid', 'order_dir' => 'DESC', 'limit' => $mybb->settings['mystatus_profile_num_recent']));
-        while ($status = $db->fetch_array($query)) {
-            $altbg = alt_trow();
-            $status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
-            $status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($memprofile['username'], $memprofile['usergroup'], $memprofile['displaygroup']).'</a>';
-            $status['avatar'] = $memprofile['avatar'];
-            $status['username'] = $memprofile['username'];
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
 
-            if (($mybb->usergroup['mystatus_can_delete_own'] AND $mybb->user['uid'] == $memprofile['uid']) OR $mybb->usergroup['mystatus_can_moderate']) {
-                eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
-            } else {
-                $mystatus_button['delete'] = '';
-            }
-            require_once MYBB_ROOT.'inc/class_parser.php';
-            $parser = new postParser;
+		$query = $db->simple_select('statuses', '*', 'uid = '.(int) $memprofile['uid'], array('order_by' => 'sid', 'order_dir' => 'DESC', 'limit' => (int)$mybb->settings['mystatus_profile_num_recent']));
+        if ($db->num_rows($query)) {
+			if(!is_object($parser))
+			{
+				require_once MYBB_ROOT.'inc/class_parser.php';
+				$parser = new postParser;
+			}
 
-            $parserOptions  =   array(
-                'allow_html'        => 0,
-                'allow_smilies'     => 1,
-                'allow_mycode'      => 1,
-                'nl2br'             => 0,
-                'filter_badwords'   => 1,
-                'me_username'       => $status['username'],
-                'shorten_urls'      => 1
-                );
+			$parserOptions  =   array(
+				'allow_html'        => 0,
+				'allow_smilies'     => 1,
+				'allow_mycode'      => 1,
+				'nl2br'             => 0,
+				'filter_badwords'   => 1,
+				'shorten_urls'      => 1
+				);
 
-            $status['status'] = $parser->parse_message($status['status'], $parserOptions);
-            eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+			while ($status = $db->fetch_array($query)) {
+				$altbg = alt_trow();
+				$status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
+				$status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($memprofile['username'], $memprofile['usergroup'], $memprofile['displaygroup']).'</a>';
+				$status['avatar'] = $memprofile['avatar'];
+				$status['username'] = $memprofile['username'];
+
+				if (($mybb->usergroup['mystatus_can_delete_own'] AND $mybb->user['uid'] == $memprofile['uid']) OR $mybb->usergroup['mystatus_can_moderate']) {
+					eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
+				} else {
+					$mystatus_button['delete'] = '';
+				}
+
+				$parserOptions['me_username']  = $status['username'];
+
+				$status['status'] = $parser->parse_message($status['status'], $parserOptions);
+				eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+			}
         }
-
-        if ($db->num_rows($query) == 0) {
+		else
+		{
             eval("\$mystatus_latest_statuses_row = \"".$templates->get('mystatus_latest_statuses_row_no_statuses')."\";");
-        }
+		}
 
-        if ($mybb->user['uid'] == $memprofile['uid']) {
+        if ($mybb->usergroup['mystatus_can_use'] && $mybb->user['uid'] == $memprofile['uid']) {
+			$altbg = alt_trow();
             eval("\$mystatus_update_form = \"".$templates->get('mystatus_update_form')."\";");
         }
 
@@ -600,13 +637,9 @@ function mystatus_postbit(&$post)
     global $mybb, $db, $lang, $pids;
 
     if ($mybb->settings['mystatus_postbit']) {
-        if (!isset($lang->mystatus)) {
-            $lang->load('mystatus');
-        }
-
         static $myStatus;
 
-        if (!is_array($myStatus) AND $mybb->input['method'] != "quickreply") {
+        if (!is_array($myStatus) AND $mybb->input['method'] != "quickreply" && !empty($pids)) {
             $myStatus = array();
 
             $statusQuery = $db->write_query('SELECT p.uid, s.status FROM '.TABLE_PREFIX.'posts p INNER JOIN '.TABLE_PREFIX.'statuses s ON (p.uid = s.uid) WHERE '.$pids.' ORDER BY ABS(s.dateline) DESC;');
@@ -619,6 +652,10 @@ function mystatus_postbit(&$post)
         }
 
         if (isset($myStatus[$post['uid']])) {
+			if (!isset($lang->mystatus)) {
+				$lang->load('mystatus');
+			}
+
             if (is_array($myStatus[$post['uid']])) {
                 $myStatus[$post['uid']] = $myStatus[$post['uid']][count($myStatus[$post['uid']]) - 1];
             }
@@ -631,7 +668,7 @@ function mystatus_postbit(&$post)
 $plugins->add_hook('misc_start', 'mystatus_statuses_page');
 function mystatus_statuses_page()
 {
-    global $lang, $mybb, $db, $templates, $theme, $cache, $headerinclude, $header, $footer, $mystatus_js;
+    global $lang, $mybb, $db, $templates, $theme, $cache, $headerinclude, $header, $footer, $mystatus_js, $parser;
 
     if ($mybb->input['action'] == 'mystatus') {
         if (!isset($lang->mystatus)) {
@@ -650,38 +687,46 @@ function mystatus_statuses_page()
         $multipage = multipage($numStatuses, 10, $curPage, 'misc.php?action=mystatus');
 
         $query = $db->write_query('SELECT s.*, u.username, u.avatar, u.usergroup, u.displaygroup FROM '.$db->table_prefix.'statuses s INNER JOIN '.$db->table_prefix.'users u ON u.uid = s.uid ORDER BY ABS(sid) DESC LIMIT '.(($curPage - 1) * 10).', 10;');
-        while ($status = $db->fetch_array($query)) {
-            $altbg = alt_trow();
-            $status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
-            $status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($status['username'], $status['usergroup'], $status['displaygroup']).'</a>';
+        if ($db->num_rows($query)) {
+			if(!is_object($parser))
+			{
+				require_once MYBB_ROOT.'inc/class_parser.php';
+				$parser = new postParser;
+			}
 
-            if (($mybb->usergroup['mystatus_can_delete_own'] AND $mybb->user['uid'] == $status['uid']) OR $mybb->usergroup['mystatus_can_moderate']) {
-                eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
-            } else {
-                $mystatus_button['delete'] = '';
-            }
-            require_once MYBB_ROOT."inc/class_parser.php";
-            $parser = new postParser;
+			$parserOptions  =   array(
+				'allow_html'        => 0,
+				'allow_smilies'     => 1,
+				'allow_mycode'      => 1,
+				'nl2br'             => 0,
+				'filter_badwords'   => 1,
+				'shorten_urls'      => 1
+				);
 
-            $parserOptions  =   array(
-                'allow_html'        => 0,
-                'allow_smilies'     => 1,
-                'allow_mycode'      => 1,
-                'nl2br'             => 0,
-                'filter_badwords'   => 1,
-                'me_username'       => $status['username'],
-                'shorten_urls'      => 1,
-                );
+			while ($status = $db->fetch_array($query)) {
+				$altbg = alt_trow();
+				$status['dateline'] = my_date($mybb->settings['dateformat'], $status['dateline']).', '.my_date($mybb->settings['timeformat'], $status['dateline']);
+				$status['formattedusername'] = '<a href="'.get_profile_link($status['uid']).'">'.format_name($status['username'], $status['usergroup'], $status['displaygroup']).'</a>';
 
-            $status['status'] = $parser->parse_message($status['status'], $parserOptions);
-            eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+				if (($mybb->usergroup['mystatus_can_delete_own'] AND $mybb->user['uid'] == $status['uid']) OR $mybb->usergroup['mystatus_can_moderate']) {
+					eval("\$mystatus_button['delete'] = \"".$templates->get('mystatus_button_delete')."\";");
+				} else {
+					$mystatus_button['delete'] = '';
+				}
+
+				$parserOptions['me_username']  = $status['username'];
+
+				$status['status'] = $parser->parse_message($status['status'], $parserOptions);
+				eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
+			}
         }
-
-        if ($db->num_rows($query) == 0) {
+		else
+		{
             eval("\$mystatus_latest_statuses_row = \"".$templates->get('mystatus_latest_statuses_row_no_statuses')."\";");
-        }
+		}
 
         if ($mybb->usergroup['mystatus_can_use']) {
+			$altbg = alt_trow();
             eval("\$mystatus_update_form = \"".$templates->get('mystatus_update_form')."\";");
         }
 
@@ -694,50 +739,57 @@ function mystatus_statuses_page()
 $plugins->add_hook('misc_start', 'mystatus_process');
 function mystatus_process()
 {
-    global $lang, $mybb, $db, $templates, $theme, $cache;
-    if (!isset($lang->mystatus)) {
-        $lang->load('mystatus');
-    }
+    global $mybb;
 
     if ($mybb->input['action'] == 'mystatus_update' AND strtolower($mybb->request_method) == 'post') {
+		global $lang, $db, $templates, $theme;
+		if (!isset($lang->mystatus)) {
+			$lang->load('mystatus');
+		}
+
+		if($mybb->input['accessMethod'] == 'js')
+		{
+			$mybb->input['ajax'] = 1;
+		}
+
         if (!verify_post_check($mybb->input['my_post_key'], true)) {
-            if ($mybb->input['accessMethod'] == 'js') {
-                header('HTTP/1.0 600');
-                echo $lang->mystatus_error_updating;
-            } else {
-                error($lang->mystatus_error_updating);
-            }
-            die();
+			mystatus_error($lang->mystatus_error_updating, $mybb->input['ajax']);
         }
 
         if ((int) $mybb->settings['mystatus_min_length'] != 0) {
             if (strlen(trim($mybb->input['statusText'])) < $mybb->settings['mystatus_min_length']) {
-                if ($mybb->input['accessMethod'] == 'js') {
-                    header('HTTP/1.0 600');
-                    echo $lang->mystatus_error_status_too_short;
-                } else {
-                    error($lang->mystatus_error_status_too_short);
-                }
-                die();
+				mystatus_error($lang->mystatus_error_status_too_short, $mybb->input['ajax']);
             }
         }
 
         if ((int) $mybb->settings['mystatus_max_length'] != 0) {
             if (strlen(trim($mybb->input['statusText'])) > $mybb->settings['mystatus_max_length']) {
-                if ($mybb->input['accessMethod'] == 'js') {
-                    header('HTTP/1.0 600');
-                    echo $lang->mystatus_error_status_too_long;
-                } else {
-                    error($lang->mystatus_error_status_too_long);
-                }
-                die();
+				mystatus_error($lang->mystatus_error_status_too_long, $mybb->input['ajax']);
             }
         }
 
+		// Check flood time
+		if(!empty($mybb->settings['mystatus_flood_check']))
+		{
+			$seconds = (int)$mybb->settings['mystatus_flood_check'];
+			$seconds = TIME_NOW-$seconds;
+
+			$mybb->user['uid'] = (int)$mybb->user['uid'];
+			$query = $db->simple_select('statuses', 'sid,dateline', "dateline>='{$seconds}' AND uid='{$mybb->user['uid']}'", array('limit' => 1, 'order_by' => 'dateline', 'oder_dir' => 'desc'));
+			$floodstatus = $db->fetch_array($query);
+
+			if($floodstatus['sid'])
+			{
+				$seconds = $floodstatus['dateline']-$seconds;
+				$message = $lang->sprintf($lang->mystatus_error_status_flood, my_number_format($seconds));
+				mystatus_error($message, $mybb->input['ajax']);
+			}
+		}
+
         $insertArray    =   array(
-            'uid'       =>  (int) $mybb->user['uid'],
+            'uid'       =>  $mybb->user['uid'],
             'status'    =>  $db->escape_string($mybb->input['statusText']),
-            'dateline'  =>  time(),
+            'dateline'  =>  TIME_NOW,
             );
 
         if ($mybb->user['mystatus_twitter_posting_enabled'] AND $mybb->settings['mystatus_post_to_twitter']) {
@@ -747,8 +799,14 @@ function mystatus_process()
             $insertArray['tweetid'] = $db->escape_string($response->id_str);
         }
 
-        if ($db->insert_query('statuses', $insertArray)) {
-            if ($mybb->input['accessMethod'] == 'js') {
+		$refferelink = $mybb->settings['bburl'].'/index.php';
+		if($_SERVER['HTTP_REFERER'])
+		{
+			$refferelink = $_SERVER['HTTP_REFERER'];
+		}
+
+        if ($sid = $db->insert_query('statuses', $insertArray)) {
+            if ($mybb->input['ajax']) {
                 require_once MYBB_ROOT.'inc/class_parser.php';
                 $parser = new postParser;
 
@@ -763,10 +821,10 @@ function mystatus_process()
                     );
 
                 $status =   array(
-                    'sid'               =>  (int) $db->insert_id(),
+                    'sid'               =>  (int)$sid,
                     'username'          =>  $mybb->user['username'],
-                    'formattedusername' =>  '<a href="'.get_profile_link($mybb->user['uid']).'">'.format_name($mybb->user['username'], $mybb->user['usergroup'], $mybb->user['displaygroup']).'</a>',
-                    'dateline'          =>  my_date($mybb->settings['dateformat'], time()).', '.my_date($mybb->settings['timeformat'], time()),
+                    'formattedusername' =>  build_profile_link(format_name($mybb->user['username'], $mybb->user['usergroup'], $mybb->user['displaygroup']), $mybb->user['uid']),
+                    'dateline'          =>  my_date($mybb->settings['dateformat'], TIME_NOW).', '.my_date($mybb->settings['timeformat'], TIME_NOW),
                     'avatar'            =>  $mybb->user['avatar'],
                     'status'            =>  $parser->parse_message($mybb->input['statusText'], $parserOptions)
                     );
@@ -779,34 +837,18 @@ function mystatus_process()
                 eval("\$mystatus_latest_statuses_row .= \"".$templates->get('mystatus_latest_statuses_row')."\";");
                 echo $mystatus_latest_statuses_row;
             } else {
-                redirect($_SERVER['HTTP_REFERER'], $lang->mystatus_status_updated_message, $lang->mystatus_status_updated);
+                redirect($refferelink, $lang->mystatus_status_updated_message, $lang->mystatus_status_updated);
             }
         } else {
-            if ($mybb->input['accessMethod'] == 'js') {
-                echo $lang->mystatus_error_updating;
-            } else {
-                error($lang->mystatus_error_updating);
-            }
+			mystatus_error($lang->mystatus_error_updating);
         }
     } elseif ($mybb->input['action'] == 'mystatus_delete') { // Deleting a status
         if (!verify_post_check($mybb->input['my_post_key'], true)) {
-            if ($mybb->input['accessMethod'] == 'js') {
-                header('HTTP/1.0 600');
-                echo $lang->mystatus_error_deleting;
-            } else {
-                error($lang->mystatus_error_deleting);
-            }
-            die();
+			mystatus_error($lang->mystatus_error_updating, $mybb->input['ajax']);
         }
 
         if ((int) $mybb->input['sid'] < 1) {
-            if ($mybb->input['accessMethod'] == 'js') {
-                header('HTTP/1.0 600');
-                echo $lang->mystatus_error_deleting_invalid_status;
-            } else {
-                error($lang->mystatus_error_deleting_invalid_status);
-            }
-            die();
+			mystatus_error($lang->mystatus_error_deleting_invalid_status, $mybb->input['ajax']);
         }
 
         $status = $db->fetch_array($db->simple_select('statuses', 'tweetid, uid', 'sid = '.(int) $mybb->input['sid']));
@@ -818,24 +860,19 @@ function mystatus_process()
             }
 
             if ($db->delete_query('statuses', 'sid = '.(int) $mybb->input['sid'], '1')) {
-                if ($mybb->input['accessMethod'] == 'js') {
+                if ($mybb->input['ajax']) {
                     echo $lang->mystatus_status_deleted_message;
                 } else {
-                    redirect($_SERVER['HTTP_REFERER'], $lang->mystatus_status_deleted_message, $lang->mystatus_deleted_updated);
+                    redirect($refferelink, $lang->mystatus_status_deleted_message, $lang->mystatus_deleted_updated);
                 }
             } else {
-                if ($mybb->input['accessMethod'] == 'js') {
-                    header('HTTP/1.0 600');
-                    echo $lang->mystatus_error_deleting;
-                } else {
-                    error($lang->mystatus_error_deleting);
-                }
+				mystatus_error($lang->mystatus_error_deleting, $mybb->input['ajax']);
             }
         } else {
-            if ($mybb->input['accessMethod'] == 'js') {
+            if ($mybb->input['ajax']) {
                 echo $lang->mystatus_status_delete_nopermissions;
             } else {
-                redirect($_SERVER['HTTP_REFERER'], $lang->mystatus_status_delete_nopermissions, $lang->mystatus_status_delete_nopermissions);
+                redirect($refferelink, $lang->mystatus_status_delete_nopermissions, $lang->mystatus_status_delete_nopermissions);
             }
         }
     }
@@ -893,4 +930,24 @@ function mystatus_online_location(&$plugin_array)
 
         $plugin_array['location_name'] = $lang->mystatus_online_location_usercp_unlink;
     }
+}
+
+function mystatus_error($message, $header=false)
+{
+	global $mybb;
+
+	if($mybb->input['ajax'])
+	{
+		if($header)
+		{
+			header('HTTP/1.0 600');
+		}
+
+		echo $message;
+	}
+	else
+	{
+		error($message);
+	}
+	exit;
 }
