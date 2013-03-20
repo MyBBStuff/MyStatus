@@ -34,6 +34,8 @@ $l['mystatus_setting_twitter_consumer_secret']      = 'Twitter Consumer Secret';
 $l['mystatus_setting_twitter_consumer_secret_desc'] = 'Twitter Consumer Secret required to post status updates to twitter. To get your key, visit <a href="http://dev.twitter.com">here</a> and register your application.';
 $l['mystatus_setting_postbit']                      = 'Show MyStatus On Postbit';
 $l['mystatus_setting_postbit_desc']                 = 'You can enable the functionality to show a user\'s most recent status update on their psotbit. Doing so does add 1 extra query to showthread.php though. Disabled by default.';
+$l['mystatus_setting_flood_check']                      = 'Status Flood Time';
+$l['mystatus_setting_flood_check_desc']                 = 'Set the time (in seconds) users have to wait between posting statuses, leave empty to disable.';
 
 $l['mystatus_can_use']                              = 'Can Use MyStatus?';
 $l['mystatus_can_moderate']                         = 'Can Moderate Statuses?';
