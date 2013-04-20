@@ -14,33 +14,46 @@
 jQuery.noConflict();
 jQuery(document).ready(function($)
 {
-	$('#mystatusUpdater').live('submit', function(event)
+	$('#mystatusUpdater').on('submit', function(event)
 	{
 		event.preventDefault();
 		
 		var statusForm = $(this);
 		var statusText = statusForm.find('input[name="statusText"]:first');
-		var my_post_key = statusForm.find('input[name="my_post_key"]:first');
 				
-		$.post('misc.php?action=mystatus_update', { statusText: statusText.val(), accessMethod: "js", my_post_key: my_post_key.val() },  function(data) {
-			$(data).hide().prependTo('#latestStatusList').fadeIn("slow");
-			statusText.val('');
-		});
+		$.post(
+			'misc.php?action=mystatus_update',
+			{
+				statusText: statusText.val(),
+				accessMethod: "js",
+				my_post_key: my_post_key
+			},
+			function(data) {
+				$(data).hide().prependTo('#latestStatusList').fadeIn("slow");
+				statusText.val('');
+			}
+		);
 		
 		return false;
 	});
 	
-	$('[id^="mystatus_delete_"]').live('click', function(event)
+	$('[id^="mystatus_delete_"]').on('click', function(event)
 	{
 		event.preventDefault();
 		
 		var deleteLink = $(this);
 		
-		$.post(deleteLink.attr('href'), { accessMethod: 'js' }, function(data)
-		{
-			deleteLink.parents('tr').prev('tr').remove();
-			deleteLink.parents('tr').remove();			
-		});
+		$.post(
+			deleteLink.attr('href'),
+			{
+				accessMethod: 'js'
+			},
+			function(data)
+			{
+				deleteLink.parents('tr').prev('tr').remove();
+				deleteLink.parents('tr').remove();			
+			}
+		);
 		
 		return false;
 	});
