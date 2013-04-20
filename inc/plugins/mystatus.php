@@ -281,7 +281,7 @@ function mystatus_usergroup_perms_tab(&$tabs)
         $lang->load('mystatus');
     }
 
-    $tabs['mystatus'] = $lang->group_mystatus;
+    $tabs['mystatus'] = $lang->mystatus;
 }
 
 $plugins->add_hook('global_start', 'mystatus_templates_cache');
@@ -319,7 +319,7 @@ function mystatus_usergroup_perms()
     }
 
     echo '<div id="tab_mystatus">';
-    $form_container = new FormContainer($lang->group_mystatus);
+    $form_container = new FormContainer($lang->mystatus);
     $form_container->output_row($lang->mystatus_can_use, "", $form->generate_yes_no_radio('mystatus_can_use', $mybb->input['mystatus_can_use'], true), 'mystatus_can_use');
     $form_container->output_row($lang->mystatus_can_moderate, "", $form->generate_yes_no_radio('mystatus_can_moderate', $mybb->input['mystatus_can_moderate'], true), 'mystatus_can_moderate');
     $form_container->output_row($lang->mystatus_can_delete_own, "", $form->generate_yes_no_radio('mystatus_can_delete_own', $mybb->input['mystatus_can_delete_own'], true), 'mystatus_can_delete_own');

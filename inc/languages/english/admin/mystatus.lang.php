@@ -38,3 +38,4 @@ $l['mystatus_setting_postbit_desc']                 = 'You can enable the functi
 $l['mystatus_can_use']                              = 'Can Use MyStatus?';
 $l['mystatus_can_moderate']                         = 'Can Moderate Statuses?';
 $l['mystatus_can_delete_own']                       = 'Can Delete Own Statuses?';
+$l['mystatus_can_comment']                          = 'Can Comment On Statuses?';
