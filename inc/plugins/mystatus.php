@@ -170,8 +170,8 @@ function mystatus_activate()
     global $db, $lang, $PL;
 
     if (!file_exists(PLUGINLIBRARY)) {
-        flash_message($lang->myalerts_pluginlibrary_missing, "error");
-        admin_redirect("index.php?module=config-plugins");
+        flash_message($lang->myalerts_pluginlibrary_missing, 'error');
+        admin_redirect('index.php?module=config-plugins');
     }
 
     $PL or require_once PLUGINLIBRARY;
@@ -323,6 +323,7 @@ function mystatus_usergroup_perms()
     $form_container->output_row($lang->mystatus_can_use, "", $form->generate_yes_no_radio('mystatus_can_use', $mybb->input['mystatus_can_use'], true), 'mystatus_can_use');
     $form_container->output_row($lang->mystatus_can_moderate, "", $form->generate_yes_no_radio('mystatus_can_moderate', $mybb->input['mystatus_can_moderate'], true), 'mystatus_can_moderate');
     $form_container->output_row($lang->mystatus_can_delete_own, "", $form->generate_yes_no_radio('mystatus_can_delete_own', $mybb->input['mystatus_can_delete_own'], true), 'mystatus_can_delete_own');
+    $form_container->output_row($lang->mystatus_can_comment, "", $form->generate_yes_no_radio('mystatus_can_comment', $mybb->input['mystatus_can_comment'], true), 'mystatus_can_comment');
     $form_container->end();
     echo '</div>';
 }
@@ -335,6 +336,7 @@ function mystatus_usergroup_perms_save()
     $updated_group['mystatus_can_use'] = (int) $mybb->input['mystatus_can_use'];
     $updated_group['mystatus_can_moderate'] = (int) $mybb->input['mystatus_can_moderate'];
     $updated_group['mystatus_can_delete_own'] = (int) $mybb->input['mystatus_can_delete_own'];
+    $updated_group['mystatus_can_comment'] = (int) $mybb->input['mystatus_can_comment'];
 }
 
 $plugins->add_hook('usercp_menu', 'mystatus_usercp_nav_oauth', 10);
@@ -371,7 +373,7 @@ function mystatus_usercp_oauth()
         output_page($page);
     } elseif ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth-redirect') {
         session_start();
-        require_once MYBB_ROOT.'inc/plugins/MyStatus/twitteroauth.php';
+        require_once MYSTATUS_PLUGIN_PATH.'twitteroauth.php';
         $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret']);
         $request_token = $connection->getRequestToken($mybb->settings['bburl'].'/usercp.php?action=mystatus-oauth-callback');
         $_SESSION['oauth_token'] = $request_token['oauth_token'];
@@ -380,7 +382,7 @@ function mystatus_usercp_oauth()
         header('Location: '.$url);
     } elseif ($mybb->settings['mystatus_post_to_twitter'] AND $mybb->input['action'] == 'mystatus-oauth-callback') {
         session_start();
-        require_once MYBB_ROOT.'inc/plugins/MyStatus/twitteroauth.php';
+        require_once MYSTATUS_PLUGIN_PATH.'twitteroauth.php';
         $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret'], $_SESSION['oauth_token'], $_SESSION['oauth_token_secret']);
         $access_token = $connection->getAccessToken($mybb->input['oauth_verifier']);
         $updateArray = array(
@@ -465,7 +467,7 @@ function mystatus_profile()
         $lang->load('mystatus');
     }
 
-    if ((int) $mybb->settings['mystatus_profile_num_recent'] != 0 AND $umybb->usergroup['mystatus_can_use']) {
+    if ((int) $mybb->settings['mystatus_profile_num_recent'] != 0 AND $mybb->usergroup['mystatus_can_use']) {
         $query = $db->simple_select('statuses', '*', 'uid = '.(int) $memprofile['uid'], array('order_by' => 'sid', 'order_dir' => 'DESC', 'limit' => $mybb->settings['mystatus_profile_num_recent']));
         while ($status = $db->fetch_array($query)) {
             $altbg = alt_trow();
@@ -655,7 +657,7 @@ function mystatus_process()
             );
 
         if ($mybb->user['mystatus_twitter_posting_enabled'] AND $mybb->settings['mystatus_post_to_twitter']) {
-            require_once(MYBB_ROOT.'inc/plugins/MyStatus/twitteroauth.php');
+            require_once MYSTATUS_PLUGIN_PATH.'twitteroauth.php';
             $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret'], $mybb->user['mystatus_twitter_oauth_token'], $mybb->user['mystatus_twitter_oauth_token_secret']);
             $response = $connection->post('statuses/update', array('status' => substr(htmlspecialchars_uni(stripslashes($insertArray['status'])), 0, 140)));
             $insertArray['tweetid'] = $db->escape_string($response->id_str);
@@ -726,7 +728,7 @@ function mystatus_process()
         $status = $db->fetch_array($db->simple_select('statuses', 'tweetid, uid', 'sid = '.(int) $mybb->input['sid']));
         if (($mybb->usergroup['mystatus_can_delete_own'] AND $mybb->user['uid'] == $status['uid']) OR $mybb->usergroup['mystatus_can_moderate']) {
             if ($mybb->user['mystatus_twitter_posting_enabled'] AND $mybb->settings['mystatus_post_to_twitter']) {
-                require_once(MYBB_ROOT.'inc/plugins/MyStatus/twitteroauth.php');
+                require_once MYSTATUS_PLUGIN_PATH.'twitteroauth.php';
                 $connection = new TwitterOAuth($mybb->settings['mystatus_twitter_consumer'], $mybb->settings['mystatus_twitter_consumer_secret'], $mybb->user['mystatus_twitter_oauth_token'], $mybb->user['mystatus_twitter_oauth_token_secret']);
                 $connection->delete('statuses/destroy/'.(int) $status['tweetid']);
             }

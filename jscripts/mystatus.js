@@ -48,8 +48,7 @@ jQuery(document).ready(function($)
 			{
 				accessMethod: 'js'
 			},
-			function(data)
-			{
+			function(data) {
 				deleteLink.parents('tr').prev('tr').remove();
 				deleteLink.parents('tr').remove();			
 			}
