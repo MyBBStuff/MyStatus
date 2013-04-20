@@ -1,0 +1,10 @@
+<tr>
+    <td class="{$altbg}" colspan="2">
+        <form action="misc.php?action=mystatus_update" method="post" id="mystatusUpdater">
+            <div style="padding: {$theme['tablespace']}px">
+                <input type="text" name="statusText" id="statusText" value="{$lang->mystatus_enter_prompt}" onfocus="if (this.value == '{$lang->mystatus_enter_prompt}') { this.value=''; }" onblur="if (this.value == '') { this.value='{$lang->mystatus_enter_prompt}'; }" style="width: 100%" />
+                <input type="hidden" name="my_post_key" value="{$mybb->post_code}" id="mystatusPostKey" />
+            </div>
+        </form>
+    </td>
+</tr>

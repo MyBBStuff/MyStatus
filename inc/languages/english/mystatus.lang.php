@@ -23,7 +23,6 @@ $l['mystatus_status_deleted_message']          = 'Status deleted successfully. R
 
 $l['mystatus_error_updating']                  = 'Sorry, an error occurred while updating your status.';
 $l['mystatus_error_status_too_short']          = 'Sorry, the status you entered was too short. Please try again.';
-$l['mystatus_error_status_flood']          = 'You are trying to send a status too quickly after sending a previous one. Please wait {1} more second(s).';
 $l['mystatus_error_status_too_long']           = 'Sorry, the status you entered was too long. Please try again.';
 
 $l['mystatus_error_deleting']                  = 'Sorry, an error occurred while deleting the specified status.';
